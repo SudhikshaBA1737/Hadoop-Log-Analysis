@@ -4,108 +4,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hadoop Log Analysis Dashboard</title>
+    <title>LogScope | Hadoop Analytics</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <header>
-        <div>
-            <h1>Hadoop Log Analysis</h1>
-            <p>Web Server Access Log Monitoring Dashboard</p>
+    <aside class="sidebar">
+        <a href="/" class="brand">
+            <span class="brand-icon">L</span>
+            <span>LogScope<small>HADOOP ANALYTICS</small></span>
+        </a>
+
+        <div class="nav-label">WORKSPACE</div>
+        <a href="#overview" class="nav-link active"><span>▦</span> Overview</a>
+        <a href="#analyze" class="nav-link"><span>＋</span> Analyze Logs</a>
+        <a href="#results" class="nav-link"><span>▤</span> Status Reports</a>
+
+        <div class="sidebar-bottom">
+            <span class="live-dot"></span>
+            <div>Processing engine<small>Hadoop MapReduce</small></div>
         </div>
-        <span class="status">● MapReduce Analytics</span>
-    </header>
+    </aside>
 
-    <main>
-        {% if error %}
-            <div class="error">
-                <h3>Unable to load HDFS results</h3>
-                <p>{{ error }}</p>
-                <p>Check that Hadoop is running and the output file exists.</p>
+    <main class="main">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">MONITORING / ANALYTICS</p>
+                <h1>Web Server Analytics</h1>
+                <p class="subtitle">Monitor traffic and understand HTTP response patterns.</p>
             </div>
-        {% else %}
-            <section class="summary">
-                <div class="card">
-                    <p>Total Requests</p>
-                    <h2>{{ total_requests }}</h2>
-                </div>
-                <div class="card">
-                    <p>Status Codes Found</p>
-                    <h2>{{ total_status_codes }}</h2>
-                </div>
-                <div class="card">
-                    <p>Successful Requests</p>
-                    <h2>{{ details | selectattr('code', 'equalto', '200') | map(attribute='count') | sum }}</h2>
-                </div>
-            </section>
+            <div class="engine-badge"><span class="live-dot"></span> Hadoop engine</div>
+        </header>
 
-            <section class="charts">
-                <div class="panel">
-                    <h3>HTTP Status Code Distribution</h3>
-                    <canvas id="barChart"></canvas>
+        <section id="analyze" class="panel upload-panel">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">DATA INGESTION</p>
+                    <h2>Analyze access logs</h2>
+                    <p class="muted">Paste server log entries or upload a .log or .txt file.</p>
                 </div>
-                <div class="panel">
-                    <h3>Request Percentage</h3>
-                    <canvas id="pieChart"></canvas>
-                </div>
-            </section>
+                <div class="upload-icon">↥</div>
+            </div>
 
-            <section class="panel table-panel">
-                <h3>Status Code Details</h3>
+            <form method="POST" enctype="multipart/form-data">
+                <label for="log_text">Paste log entries</label>
+                <textarea id="log_text" name="log_text"
+                    placeholder='192.168.1.10 - - [27/Oct/2026:10:00:00 +0530] "GET /home HTTP/1.1" 200 1024
+192.168.1.11 - - [27/Oct/2026:10:01:00 +0530] "GET /missing HTTP/1.1" 404 512'></textarea>
+
+                <div class="or-divider"><span>OR UPLOAD A FILE</span></div>
+
+                <label class="file-picker" for="log_file">
+                    <span class="file-icon">↑</span>
+                    <span><strong>Choose a log file</strong><small id="file-name">.log and .txt files supported</small></span>
+                    <span class="browse">Browse files</span>
+                </label>
+                <input id="log_file" name="log_file" type="file" accept=".log,.txt">
+
+                <div class="form-footer">
+                    <span class="muted">Results are calculated by your Hadoop MapReduce job.</span>
+                    <button type="submit"><span>▶</span> Analyze Logs</button>
+                </div>
+            </form>
+        </section>
+
+        {% if message %}
+        <div class="alert success"><span>✓</span> {{ message }}</div>
+        {% endif %}
+
+        {% if error %}
+        <div class="alert error"><strong>Analysis error:</strong> {{ error }}</div>
+        {% endif %}
+
+        <section id="overview">
+            <div class="section-heading overview-heading">
+                <div>
+                    <p class="eyebrow">PERFORMANCE SNAPSHOT</p>
+                    <h2>Analytics overview</h2>
+                </div>
+                <span class="muted">Based on the latest available Hadoop results</span>
+            </div>
+
+            <div class="summary">
+                <article class="metric-card">
+                    <div class="metric-top"><span>Total requests</span><span class="metric-icon blue">↗</span></div>
+                    <h3>{{ total_requests }}</h3>
+                    <p class="metric-note">Requests analyzed</p>
+                </article>
+                <article class="metric-card">
+                    <div class="metric-top"><span>Status categories</span><span class="metric-icon purple">▤</span></div>
+                    <h3>{{ total_status_codes }}</h3>
+                    <p class="metric-note">Distinct HTTP codes</p>
+                </article>
+                <article class="metric-card">
+                    <div class="metric-top"><span>Successful requests</span><span class="metric-icon green">✓</span></div>
+                    <h3>{{ details | selectattr('code', 'equalto', '200') | map(attribute='count') | sum }}</h3>
+                    <p class="metric-note">HTTP 200 responses</p>
+                </article>
+                <article class="metric-card">
+                    <div class="metric-top"><span>Client/server errors</span><span class="metric-icon orange">!</span></div>
+                    <h3>{{ details | selectattr('code', 'in', ['400','401','403','404','405','408','429','500','501','502','503','504']) | map(attribute='count') | sum }}</h3>
+                    <p class="metric-note">HTTP 4xx and 5xx codes</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="charts">
+            <article class="panel chart-panel">
+                <div class="panel-heading">
+                    <div><h2>Response distribution</h2><p class="muted">Request count by HTTP status code</p></div>
+                    <span class="chart-tag">BAR CHART</span>
+                </div>
+                <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+            </article>
+            <article class="panel chart-panel">
+                <div class="panel-heading">
+                    <div><h2>Traffic breakdown</h2><p class="muted">Share of total requests</p></div>
+                    <span class="chart-tag">DISTRIBUTION</span>
+                </div>
+                <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+            </article>
+        </section>
+
+        <section id="results" class="panel table-panel">
+            <div class="panel-heading">
+                <div><h2>HTTP status report</h2><p class="muted">Detailed results returned by MapReduce</p></div>
+                <span class="result-count">{{ total_status_codes }} categories</span>
+            </div>
+            <div class="table-scroll">
                 <table>
                     <thead>
-                        <tr>
-                            <th>Status Code</th>
-                            <th>Description</th>
-                            <th>Count</th>
-                            <th>Percentage</th>
-                        </tr>
+                        <tr><th>STATUS CODE</th><th>DESCRIPTION</th><th>REQUESTS</th><th>SHARE</th></tr>
                     </thead>
                     <tbody>
                         {% for item in details %}
                         <tr>
-                            <td><span class="code">{{ item.code }}</span></td>
+                            <td><span class="code code-{{ item.code }}">{{ item.code }}</span></td>
                             <td>{{ item.description }}</td>
-                            <td>{{ item.count }}</td>
-                            <td>{{ item.percentage }}%</td>
+                            <td class="count-cell">{{ item.count }}</td>
+                            <td>
+                                <div class="percentage-cell">
+                                    <span>{{ item.percentage }}%</span>
+                                    <div class="progress"><span style="width: {{ item.percentage }}%"></span></div>
+                                </div>
+                            </td>
                         </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="empty">No results available yet. Submit log entries above to begin analysis.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
-            </section>
-        {% endif %}
+            </div>
+        </section>
+
+        <footer>
+            <span><strong>LogScope</strong> · Web Server Log Analysis</span>
+            <span>Apache Hadoop · HDFS · MapReduce · Flask</span>
+        </footer>
     </main>
 
-    <footer>
-        Powered by Apache Hadoop, MapReduce, Flask and Chart.js
-    </footer>
-
-    {% if not error %}
     <script>
         const labels = {{ details | map(attribute='code') | list | tojson }};
         const counts = {{ details | map(attribute='count') | list | tojson }};
+        const colors = labels.map(code => {
+            if (code.startsWith('2')) return '#16a37b';
+            if (code.startsWith('3')) return '#8b7cf6';
+            if (code.startsWith('4')) return '#e6a23c';
+            if (code.startsWith('5')) return '#e45b69';
+            return '#4b83f0';
+        });
+
+        Chart.defaults.font.family = "'Inter', 'Segoe UI', sans-serif";
+        Chart.defaults.color = '#7b8498';
 
         new Chart(document.getElementById('barChart'), {
             type: 'bar',
             data: {
-                labels: labels,
+                labels,
                 datasets: [{
-                    label: 'Number of Requests',
+                    label: 'Requests',
                     data: counts,
-                    backgroundColor: ['#4f7cff', '#f5a623', '#ed5b68'],
-                    borderRadius: 7
+                    backgroundColor: colors,
+                    borderRadius: 6,
+                    maxBarThickness: 54
                 }]
             },
             options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false }
-                },
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
                 scales: {
+                    x: { grid: { display: false }, border: { display: false } },
                     y: {
                         beginAtZero: true,
-                        ticks: { precision: 0 }
+                        ticks: { precision: 0 },
+                        grid: { color: '#edf0f5' },
+                        border: { display: false }
                     }
                 }
             }
@@ -117,18 +210,26 @@
                 labels: labels.map(code => 'HTTP ' + code),
                 datasets: [{
                     data: counts,
-                    backgroundColor: ['#4f7cff', '#f5a623', '#ed5b68'],
-                    borderWidth: 0
+                    backgroundColor: colors,
+                    borderColor: '#ffffff',
+                    borderWidth: 4,
+                    hoverOffset: 7
                 }]
             },
             options: {
-                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '68%',
                 plugins: {
-                    legend: { position: 'bottom' }
+                    legend: { position: 'bottom', labels: { usePointStyle: true, padding: 18 } }
                 }
             }
         });
+
+        document.getElementById('log_file').addEventListener('change', function () {
+            document.getElementById('file-name').textContent =
+                this.files.length ? this.files[0].name : '.log and .txt files supported';
+        });
     </script>
-    {% endif %}
 </body>
 </html>
+
