@@ -1,0 +1,134 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hadoop Log Analysis Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Hadoop Log Analysis</h1>
+            <p>Web Server Access Log Monitoring Dashboard</p>
+        </div>
+        <span class="status">● MapReduce Analytics</span>
+    </header>
+
+    <main>
+        {% if error %}
+            <div class="error">
+                <h3>Unable to load HDFS results</h3>
+                <p>{{ error }}</p>
+                <p>Check that Hadoop is running and the output file exists.</p>
+            </div>
+        {% else %}
+            <section class="summary">
+                <div class="card">
+                    <p>Total Requests</p>
+                    <h2>{{ total_requests }}</h2>
+                </div>
+                <div class="card">
+                    <p>Status Codes Found</p>
+                    <h2>{{ total_status_codes }}</h2>
+                </div>
+                <div class="card">
+                    <p>Successful Requests</p>
+                    <h2>{{ details | selectattr('code', 'equalto', '200') | map(attribute='count') | sum }}</h2>
+                </div>
+            </section>
+
+            <section class="charts">
+                <div class="panel">
+                    <h3>HTTP Status Code Distribution</h3>
+                    <canvas id="barChart"></canvas>
+                </div>
+                <div class="panel">
+                    <h3>Request Percentage</h3>
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </section>
+
+            <section class="panel table-panel">
+                <h3>Status Code Details</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status Code</th>
+                            <th>Description</th>
+                            <th>Count</th>
+                            <th>Percentage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in details %}
+                        <tr>
+                            <td><span class="code">{{ item.code }}</span></td>
+                            <td>{{ item.description }}</td>
+                            <td>{{ item.count }}</td>
+                            <td>{{ item.percentage }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        {% endif %}
+    </main>
+
+    <footer>
+        Powered by Apache Hadoop, MapReduce, Flask and Chart.js
+    </footer>
+
+    {% if not error %}
+    <script>
+        const labels = {{ details | map(attribute='code') | list | tojson }};
+        const counts = {{ details | map(attribute='count') | list | tojson }};
+
+        new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Number of Requests',
+                    data: counts,
+                    backgroundColor: ['#4f7cff', '#f5a623', '#ed5b68'],
+                    borderRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('pieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: labels.map(code => 'HTTP ' + code),
+                datasets: [{
+                    data: counts,
+                    backgroundColor: ['#4f7cff', '#f5a623', '#ed5b68'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    </script>
+    {% endif %}
+</body>
+</html>
